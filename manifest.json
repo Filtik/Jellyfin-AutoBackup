@@ -1,0 +1,12 @@
+[
+    {
+        "guid": "1175543c-6d20-4cfa-93a6-1476836df34c",
+        "name": "Auto Backup",
+        "description": "Automated scheduled ZIP backups of Jellyfin data.",
+        "overview": "Automated scheduled ZIP backups of Jellyfin data.",
+        "owner": "Filtik",
+        "category": "General",
+        "imageUrl": "",
+        "versions": []
+    }
+]

@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Auto Backup</title></head>
+<body>
+<div data-role="page" class="page type-interior pluginConfigurationPage" data-url="AutoBackupConfigPage">
+    <div data-role="content">
+        <div class="content-primary">
+
+            <div class="verticalSection">
+                <h2 class="sectionTitle">Auto Backup</h2>
+                <p id="pg-desc" class="fieldDescription"></p>
+            </div>
+
+            <div style="display:flex;gap:4px;border-bottom:2px solid rgba(255,255,255,0.2);margin-bottom:16px;">
+                <button is="emby-button" type="button" id="tab-settings"></button>
+                <button is="emby-button" type="button" id="tab-retention"></button>
+                <button is="emby-button" type="button" id="tab-backups"></button>
+            </div>
+
+            <div id="section-settings">
+                <div id="scheduleList"></div>
+                <div class="verticalSection" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
+                    <button is="emby-button" type="button" id="btnAdd" class="raised emby-button"></button>
+                    <button is="emby-button" type="submit" id="btnSave" class="raised button-submit emby-button"><span></span></button>
+                </div>
+            </div>
+
+            <div id="section-retention" style="display:none;">
+                <div id="retentionList" style="margin-top:4px;"></div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">
+                    <button is="emby-button" type="button" id="btnAddRetention" class="raised emby-button"></button>
+                    <button is="emby-button" type="submit" id="btnSaveRetention" class="raised button-submit emby-button"><span></span></button>
+                </div>
+            </div>
+
+            <div id="section-backups" style="display:none;">
+                <div id="backupList" style="margin-top:12px;"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <script type="text/javascript">
+    (function () {
+
+        var PLUGIN_ID = '1175543c-6d20-4cfa-93a6-1476836df34c';
+        var _n = 0;
+
+        var TRANSLATIONS = {
+            en: {
+                desc: 'Backups are automatically executed at the configured times.',
+                enabled: 'Enabled',
+                labelField: 'Label',
+                database: 'Database',
+                metadata: 'Metadata',
+                subtitles: 'Subtitles',
+                trickplay: 'Trickplay',
+                scheduleType: 'Schedule type',
+                typeEveryNHours: 'Every N hours',
+                typeDaily: 'Daily',
+                typeWeekly: 'Weekly',
+                typeEveryNWeeks: 'Every N weeks',
+                typeMonthlyDay: 'Monthly (fixed day)',
+                typeMonthlyWeekday: 'Monthly (weekday)',
+                intervalHours: 'Every (hours)',
+                intervalWeeks: 'Every (weeks)',
+                dayOfMonth: 'Day of month (1–28)',
+                occurrence: 'Occurrence',
+                womFirst: '1st', womSecond: '2nd', womThird: '3rd', womFourth: '4th', womLast: 'Last',
+                dayOfWeek: 'Day of week',
+                atHour: 'At hour (0–23)',
+                atMinute: 'At minute',
+                keepLastN: 'Keep last N (0 = all)',
+                remove: 'Remove',
+                addSchedule: '+ Add Schedule',
+                save: 'Save Settings',
+                saved: 'Settings saved.',
+                errorSave: 'Error: ',
+                defaultLabel: 'New',
+                tabSettings: 'Settings',
+                tabRetention: 'Retention',
+                tabBackups: 'Backups',
+                retentionDesc: 'Define how many backups to keep per backup type combination.',
+                addRetention: '+ Add Rule',
+                noBackups: 'No backups found.',
+                backupCreated: 'Created',
+                deleteBackup: 'Delete',
+                confirmDelete: 'Delete this backup?',
+                badgeDatabase: 'Database', badgeMetadata: 'Metadata', badgeSubtitles: 'Subtitles', badgeTrickplay: 'Trickplay',
+                days: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+                daysShort: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+                badgeEvery: 'Every', badgeDaily: 'Daily', badgeWeekly: 'Weekly', badgeMonthly: 'Monthly'
+            },
+            de: {
+                desc: 'Sicherungen werden automatisch zur gewünschten Zeit ausgeführt.',
+                enabled: 'Aktiviert',
+                labelField: 'Bezeichnung',
+                database: 'Datenbank',
+                metadata: 'Metadaten',
+                subtitles: 'Untertitel',
+                trickplay: 'Trickplay',
+                scheduleType: 'Zeitplantyp',
+                typeEveryNHours: 'Alle N Stunden',
+                typeDaily: 'Täglich',
+                typeWeekly: 'Wöchentlich',
+                typeEveryNWeeks: 'Alle N Wochen',
+                typeMonthlyDay: 'Monatlich (fester Tag)',
+                typeMonthlyWeekday: 'Monatlich (Wochentag)',
+                intervalHours: 'Alle (Stunden)',
+                intervalWeeks: 'Alle (Wochen)',
+                dayOfMonth: 'Tag des Monats (1–28)',
+                occurrence: 'Häufigkeit',
+                womFirst: '1.', womSecond: '2.', womThird: '3.', womFourth: '4.', womLast: 'Letzter',
+                dayOfWeek: 'Wochentag',
+                atHour: 'Um Stunde (0–23)',
+                atMinute: 'Um Minute',
+                keepLastN: 'Letzte N behalten (0 = alle)',
+                remove: 'Entfernen',
+                addSchedule: '+ Zeitplan hinzufügen',
+                save: 'Einstellungen speichern',
+                saved: 'Einstellungen gespeichert.',
+                errorSave: 'Fehler: ',
+                defaultLabel: 'Neu',
+                tabSettings: 'Einstellungen',
+                tabRetention: 'Aufbewahrung',
+                tabBackups: 'Sicherungen',
+                retentionDesc: 'Lege fest, wie viele Sicherungen pro Optionskombination behalten werden.',
+                addRetention: '+ Regel hinzufügen',
+                noBackups: 'Keine Sicherungen gefunden.',
+                backupCreated: 'Erstellt',
+                deleteBackup: 'Löschen',
+                confirmDelete: 'Diese Sicherung löschen?',
+                badgeDatabase: 'Datenbank', badgeMetadata: 'Metadaten', badgeSubtitles: 'Untertitel', badgeTrickplay: 'Trickplay',
+                days: ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'],
+                daysShort: ['So','Mo','Di','Mi','Do','Fr','Sa'],
+                badgeEvery: 'Alle', badgeDaily: 'Täglich', badgeWeekly: 'Wöchentlich', badgeMonthly: 'Monatlich'
+            }
+        };
+
+        var T = TRANSLATIONS.en;
+
+        var TYPE_NAMES = ['EveryNHours','Daily','Weekly','EveryNWeeks','MonthlyOnDay','MonthlyOnWeekday'];
+        var MINS = [0,15,30,45];
+
+        // Jellyfin serializes enums as name strings — map back to numbers
+        var STYPE_MAP = {EveryNHours:0,Daily:1,Weekly:2,EveryNWeeks:3,MonthlyOnDay:4,MonthlyOnWeekday:5};
+        var WDAY_MAP  = {Sunday:0,Monday:1,Tuesday:2,Wednesday:3,Thursday:4,Friday:5,Saturday:6};
+        var WOM_MAP   = {First:1,Second:2,Third:3,Fourth:4,Last:-1};
+
+        function getTypes(){ return [{v:0,l:T.typeEveryNHours},{v:1,l:T.typeDaily},{v:2,l:T.typeWeekly},{v:3,l:T.typeEveryNWeeks},{v:4,l:T.typeMonthlyDay},{v:5,l:T.typeMonthlyWeekday}]; }
+        function getWOM() { return [{v:1,l:T.womFirst},{v:2,l:T.womSecond},{v:3,l:T.womThird},{v:4,l:T.womFourth},{v:-1,l:T.womLast}]; }
+
+        function applyStaticTranslations(){
+            document.getElementById('pg-desc').textContent           = T.desc;
+            document.getElementById('btnAdd').textContent            = T.addSchedule;
+            document.getElementById('btnAddRetention').textContent   = T.addRetention;
+            document.getElementById('tab-settings').textContent  = T.tabSettings;
+            document.getElementById('tab-retention').textContent = T.tabRetention;
+            document.getElementById('tab-backups').textContent   = T.tabBackups;
+            var s = document.querySelector('#btnSave span'); if(s) s.textContent = T.save;
+            var r = document.querySelector('#btnSaveRetention span'); if(r) r.textContent = T.save;
+        }
+
+        var ACTIVE_STYLE   = 'border:1px solid rgba(255,255,255,0.2);border-bottom:2px solid #101010;border-radius:4px 4px 0 0;margin-bottom:-2px;background:rgba(255,255,255,0.07);padding:6px 18px;font-weight:600;color:inherit;';
+        var INACTIVE_STYLE = 'border:1px solid transparent;border-radius:4px 4px 0 0;margin-bottom:-2px;background:transparent;padding:6px 18px;opacity:0.55;color:inherit;';
+
+        function switchTab(tab){
+            var tabs = ['settings','retention','backups'];
+            tabs.forEach(function(t){
+                document.getElementById('tab-'+t).style.cssText      = t === tab ? ACTIVE_STYLE : INACTIVE_STYLE;
+                document.getElementById('section-'+t).style.display  = t === tab ? '' : 'none';
+            });
+            if (tab === 'backups')   loadBackups();
+            if (tab === 'retention') loadRetentionUi();
+        }
+
+        function fmtSize(bytes){
+            if (bytes == null) return '';
+            if (bytes >= 1073741824) return (bytes/1073741824).toFixed(1)+' GB';
+            if (bytes >= 1048576)    return (bytes/1048576).toFixed(1)+' MB';
+            if (bytes >= 1024)       return (bytes/1024).toFixed(1)+' KB';
+            return bytes+' B';
+        }
+
+        function loadBackups(){
+            var list = document.getElementById('backupList');
+            list.textContent = '';
+            ApiClient.getJSON(ApiClient.getUrl('/AutoBackup/Backups')).then(function(backups){
+                if (!backups || backups.length === 0){
+                    list.textContent = T.noBackups;
+                    return;
+                }
+                backups.forEach(function(b){
+                    var date = new Date(b.DateCreated).toLocaleString();
+                    var name = b.Filename || '';
+                    var size = fmtSize(b.SizeBytes);
+                    var opts = b.Options || {};
+                    var tags = [];
+                    if(opts.Database)  tags.push(T.badgeDatabase);
+                    if(opts.Metadata)  tags.push(T.badgeMetadata);
+                    if(opts.Subtitles) tags.push(T.badgeSubtitles);
+                    if(opts.Trickplay) tags.push(T.badgeTrickplay);
+                    var tagsHtml = tags.map(function(t){
+                        return '<span style="display:inline-block;padding:1px 8px;border-radius:3px;font-size:.75em;background:rgba(255,255,255,.12);margin-right:4px;">'+esc(t)+'</span>';
+                    }).join('');
+                    var row = document.createElement('div');
+                    row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px 16px;margin-bottom:8px;border:1px solid rgba(255,255,255,.15);border-radius:4px;';
+                    row.innerHTML = '<div style="flex:1;min-width:0;">'
+                        +'<div style="display:flex;align-items:baseline;gap:10px;">'
+                        +'<span style="font-weight:600;">'+esc(date)+'</span>'
+                        +(size ? '<span style="font-size:.8em;opacity:.55;">'+esc(size)+'</span>' : '')
+                        +'</div>'
+                        +'<div style="font-size:.8em;opacity:.6;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(name)+'</div>'
+                        +(tagsHtml ? '<div style="margin-top:5px;">'+tagsHtml+'</div>' : '')
+                        +'</div>'
+                        +'<button is="emby-button" type="button" style="flex-shrink:0;background:#e74c3c;color:#fff;border-radius:4px;padding:4px 14px;">'+esc(T.deleteBackup)+'</button>';
+                    var btn = row.querySelector('button');
+                    (function(r, n){
+                        btn.addEventListener('click', function(){
+                            if (!confirm(T.confirmDelete)) return;
+                            ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('/AutoBackup/Backup/' + encodeURIComponent(n)) })
+                                .then(function(){ r.parentNode && r.parentNode.removeChild(r); })
+                                .catch(function(e){ Dashboard.alert(T.errorSave + e); });
+                        });
+                    })(row, name);
+                    list.appendChild(row);
+                });
+            }).catch(function(){
+                list.textContent = T.noBackups;
+            });
+        }
+
+        // ── Retention tab ────────────────────────────────────────────────
+        var _retentionRules = [];
+
+        function defaultRetentionRule(){
+            return {BackupDatabase:true,BackupMetadata:false,BackupSubtitles:false,BackupTrickplay:false,KeepLastN:7};
+        }
+
+        function buildRetentionRow(rule){
+            var row = document.createElement('div');
+            row.style.cssText = 'padding:12px 16px;margin-bottom:8px;border:1px solid rgba(255,255,255,.15);border-radius:4px;';
+
+            function chkHtml(field, label, disabled){
+                var uid  = 'ret-'+field+'-'+Math.random().toString(36).slice(2);
+                var chkd = (disabled || !!rule[field]) ? ' checked' : '';
+                var dis  = disabled ? ' disabled style="opacity:0.4;"' : '';
+                return '<div class="checkboxContainer"><label class="emby-checkbox-label"'+(disabled?' style="opacity:0.4;cursor:not-allowed;"':'')+'>'+
+                    '<input type="checkbox" is="emby-checkbox" id="'+uid+'" data-field="'+field+'"'+chkd+(disabled?' disabled':'')+'>'+
+                    '<span>'+esc(label)+'</span></label></div>';
+            }
+
+            row.innerHTML =
+                '<div style="display:flex;gap:8px 24px;flex-wrap:wrap;align-items:center;margin-bottom:4px;">'
+                + chkHtml('BackupDatabase',  T.badgeDatabase,  true)
+                + chkHtml('BackupMetadata',  T.badgeMetadata,  false)
+                + chkHtml('BackupSubtitles', T.badgeSubtitles, false)
+                + chkHtml('BackupTrickplay', T.badgeTrickplay, false)
+                +'<div style="margin-left:auto;display:flex;align-items:center;gap:8px;">'
+                +'<span>'+esc(T.keepLastN)+'</span>'
+                +'<input is="emby-input" type="number" min="1" data-field="KeepLastN" value="'+(rule.KeepLastN||7)+'" style="width:70px;">'
+                +'<button is="emby-button" type="button" class="raised emby-button" style="background-color:#c00;color:#fff;"><span>'+esc(T.remove)+'</span></button>'
+                +'</div>'
+                +'</div>';
+
+            row.querySelector('button').addEventListener('click', function(){ row.parentNode && row.parentNode.removeChild(row); });
+            return row;
+        }
+
+        function readRetentionRow(row){
+            function chkVal(field){
+                var cb = row.querySelector('[data-field="'+field+'"]');
+                return cb ? cb.checked : false;
+            }
+            var inp = row.querySelector('[data-field="KeepLastN"]');
+            return {
+                BackupDatabase:  true, // always forced
+                BackupMetadata:  chkVal('BackupMetadata'),
+                BackupSubtitles: chkVal('BackupSubtitles'),
+                BackupTrickplay: chkVal('BackupTrickplay'),
+                KeepLastN: inp ? Math.max(1, parseInt(inp.value,10)||1) : 7
+            };
+        }
+
+        function loadRetentionUi(){
+            var list = document.getElementById('retentionList');
+            list.innerHTML = '';
+            var p = document.createElement('p');
+            p.style.cssText = 'opacity:.7;margin-bottom:12px;';
+            p.textContent = T.retentionDesc;
+            list.appendChild(p);
+            _retentionRules.forEach(function(rule){ list.appendChild(buildRetentionRow(rule)); });
+        }
+
+        // ── Helpers ──────────────────────────────────────────────────────
+        function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+        function get(s,k,d){ var v=s[k]; if(v==null) v=s[k[0].toLowerCase()+k.slice(1)]; return v==null?d:v; }
+        function pad(n){ return n<10?'0'+n:''+n; }
+        function toInt(v,map,def){ if(v==null) return def; if(typeof v==='number') return v; if(!isNaN(v)) return parseInt(v,10); return map[v]!=null?map[v]:def; }
+
+        function mkOpts(arr, cur){
+            return arr.map(function(it){
+                return '<option value="'+it.v+'"'+(String(it.v)===String(cur)?' selected':'')+'>'+esc(it.l)+'</option>';
+            }).join('');
+        }
+        function mkDayOpts(cur){
+            return T.days.map(function(d,i){
+                return '<option value="'+i+'"'+(i===cur?' selected':'')+'>'+d+'</option>';
+            }).join('');
+        }
+        function mkMinOpts(cur){
+            return MINS.map(function(m){
+                return '<option value="'+m+'"'+(m===cur?' selected':'')+'>'+pad(m)+'</option>';
+            }).join('');
+        }
+
+        function makeBadge(s){
+            var p=[];
+            if(get(s,'BackupDatabase',true))  p.push('DB');
+            if(get(s,'BackupMetadata',false))  p.push('Meta');
+            if(get(s,'BackupSubtitles',false)) p.push('Subs');
+            if(get(s,'BackupTrickplay',false))  p.push('TP');
+            var st=toInt(get(s,'ScheduleType',1),STYPE_MAP,1),h=get(s,'TriggerHour',2),m=get(s,'TriggerMinute',0),t=pad(h)+':'+pad(m),sc='';
+            var wd=toInt(get(s,'WeekDay',0),WDAY_MAP,0);
+            if(st===0) sc=T.badgeEvery+' '+get(s,'IntervalHours',24)+'h';
+            else if(st===1) sc=T.badgeDaily+' '+t;
+            else if(st===2) sc=T.badgeWeekly+' '+T.daysShort[wd]+' '+t;
+            else if(st===3) sc=T.badgeEvery+' '+get(s,'IntervalWeeks',1)+'w '+T.daysShort[wd]+' '+t;
+            else if(st===4) sc=T.badgeMonthly+' '+get(s,'DayOfMonth',1)+' '+t;
+            else if(st===5){var wom=toInt(get(s,'WeekOfMonth',1),WOM_MAP,1),wl='';getWOM().forEach(function(w){if(w.v===wom)wl=w.l;});sc=T.badgeMonthly+' '+wl+' '+T.daysShort[wd]+' '+t;}
+            var d=p.join('+')+( p.length&&sc?' • ':'')+sc;
+            return d?'('+d+')':'';
+        }
+
+        function sel(id, key, label, opts, extraId){
+            var wrap = extraId ? ' id="'+extraId+'"' : '';
+            return '<div class="selectContainer"'+wrap+'>'
+                +'<label class="inputLabel inputLabelUnfocused" for="'+key+'-'+id+'">'+label+'</label>'
+                +'<select is="emby-select" id="'+key+'-'+id+'">'+opts+'</select>'
+                +'</div>';
+        }
+        function inp(id, key, label, type, min, max, val, extraId, flexStyle){
+            var wrap = (extraId ? ' id="'+extraId+'"' : '')+(flexStyle ? ' style="'+flexStyle+'"' : '');
+            return '<div class="inputContainer"'+wrap+'>'
+                +'<label class="inputLabel inputLabelUnfocused" for="'+key+'-'+id+'">'+label+'</label>'
+                +'<input type="'+(type||'text')+'" is="emby-input" id="'+key+'-'+id+'"'
+                +(min!=null?' min="'+min+'"':'')+(max!=null?' max="'+max+'"':'')
+                +' value="'+val+'">'
+                +'</div>';
+        }
+
+        function buildCardInner(s, id){
+            var label = get(s,'Label',T.defaultLabel);
+            var stype = toInt(get(s,'ScheduleType',1), STYPE_MAP, 1);
+            var wday  = toInt(get(s,'WeekDay',0), WDAY_MAP, 0);
+            var wom   = toInt(get(s,'WeekOfMonth',1), WOM_MAP, 1);
+
+            return '<summary style="cursor:pointer;padding:10px 0;display:flex;align-items:center;gap:8px;list-style:none;-webkit-appearance:none;">'
+                +'<span id="sb-arrow-'+id+'" style="font-size:.7em;transition:transform .15s;display:inline-block;">&#9654;</span>'
+                +'<span id="sb-title-'+id+'" style="flex:1;font-weight:600;">'+esc(label)+'</span>'
+                +'<span id="sb-badge-'+id+'" style="font-size:.8em;opacity:.7;">'+esc(makeBadge(s))+'</span>'
+                +'</summary>'
+
+                +'<div style="padding:4px 0 14px;">'
+
+                +'<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:4px;">'
+                +'<div class="checkboxContainer">'
+                +'<label class="emby-checkbox-label">'
+                +'<input type="checkbox" is="emby-checkbox" name="sb-enabled-'+id+'" id="sb-enabled-'+id+'">'
+                +'<span>'+T.enabled+'</span>'
+                +'</label>'
+                +'</div>'
+                +inp(id,'sb-label',T.labelField,'text',null,null,esc(label),null,'flex:1;min-width:160px;')
+                +'</div>'
+
+                +'<div style="display:flex;gap:8px 24px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">'
+                +'<div class="checkboxContainer" style="opacity:0.4;cursor:not-allowed;"><label class="emby-checkbox-label" style="cursor:not-allowed;"><input type="checkbox" is="emby-checkbox" name="sb-db-'+id+'" id="sb-db-'+id+'" checked disabled><span>'+T.database+'</span></label></div>'
+                +'<div class="checkboxContainer"><label class="emby-checkbox-label"><input type="checkbox" is="emby-checkbox" name="sb-meta-'+id+'" id="sb-meta-'+id+'"><span>'+T.metadata+'</span></label></div>'
+                +'<div class="checkboxContainer"><label class="emby-checkbox-label"><input type="checkbox" is="emby-checkbox" name="sb-subs-'+id+'" id="sb-subs-'+id+'"><span>'+T.subtitles+'</span></label></div>'
+                +'<div class="checkboxContainer"><label class="emby-checkbox-label"><input type="checkbox" is="emby-checkbox" name="sb-tp-'+id+'" id="sb-tp-'+id+'"><span>'+T.trickplay+'</span></label></div>'
+                +'</div>'
+
+                +'<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">'
+                +sel(id,'sb-type',T.scheduleType,mkOpts(getTypes(),stype),null)
+                +inp(id,'sb-ihours',T.intervalHours,'number',1,8760,get(s,'IntervalHours',24),'sb-f-ihours-'+id,null)
+                +inp(id,'sb-iweeks',T.intervalWeeks,'number',1,52,get(s,'IntervalWeeks',1),'sb-f-iweeks-'+id,null)
+                +inp(id,'sb-dom',T.dayOfMonth,'number',1,28,get(s,'DayOfMonth',1),'sb-f-dom-'+id,null)
+                +sel(id,'sb-wom',T.occurrence,mkOpts(getWOM(),wom),'sb-f-wom-'+id)
+                +sel(id,'sb-wday',T.dayOfWeek,mkDayOpts(wday),'sb-f-wday-'+id)
+                +inp(id,'sb-hour',T.atHour,'number',0,23,get(s,'TriggerHour',2),'sb-f-hour-'+id,null)
+                +sel(id,'sb-min',T.atMinute,mkMinOpts(get(s,'TriggerMinute',0)),'sb-f-min-'+id)
+                +'<button is="emby-button" type="button" class="raised emby-button" id="sb-remove-'+id+'" style="background-color:#c00;color:#fff;margin-left:auto;align-self:flex-end;"><span>'+T.remove+'</span></button>'
+                +'</div>'
+
+                +'</div>';
+        }
+
+        function q(id, suffix){ return document.getElementById('sb-'+suffix+'-'+id); }
+        function getCardId(card){ return card.id.replace('sbcard-',''); }
+
+        function updateVis(card){
+            var id    = getCardId(card);
+            var stype = parseInt(q(id,'type').value, 10);
+            var tn    = TYPE_NAMES[stype]||'';
+            var show  = {
+                ihours: tn==='EveryNHours',
+                iweeks: tn==='EveryNWeeks',
+                dom:    tn==='MonthlyOnDay',
+                wom:    tn==='MonthlyOnWeekday',
+                wday:   tn==='Weekly'||tn==='EveryNWeeks'||tn==='MonthlyOnWeekday',
+                hour:   tn!=='EveryNHours',
+                min:    tn!=='EveryNHours'
+            };
+            var keys = Object.keys(show);
+            for(var i=0;i<keys.length;i++){
+                var el = q(id,'f-'+keys[i]);
+                if(el) el.style.display = show[keys[i]] ? '' : 'none';
+            }
+        }
+
+        function updateBadge(card){
+            var id = getCardId(card);
+            var s  = readCard(card);
+            q(id,'title').textContent = s.Label||T.defaultLabel;
+            q(id,'badge').textContent = makeBadge(s);
+        }
+
+        function readCard(card){
+            var id = getCardId(card);
+            return {
+                IsEnabled:       q(id,'enabled').checked,
+                Label:           q(id,'label').value,
+                BackupDatabase:  true,
+                BackupMetadata:  q(id,'meta').checked,
+                BackupSubtitles: q(id,'subs').checked,
+                BackupTrickplay: q(id,'tp').checked,
+                ScheduleType:    parseInt(q(id,'type').value, 10),
+                IntervalHours:   parseInt(q(id,'ihours').value, 10)||24,
+                IntervalWeeks:   parseInt(q(id,'iweeks').value, 10)||1,
+                WeekDay:         parseInt(q(id,'wday').value, 10),
+                DayOfMonth:      parseInt(q(id,'dom').value, 10)||1,
+                WeekOfMonth:     parseInt(q(id,'wom').value, 10),
+                TriggerHour:     parseInt(q(id,'hour').value, 10),
+                TriggerMinute:   parseInt(q(id,'min').value, 10)
+            };
+        }
+
+        function wireCard(card, s){
+            var id = getCardId(card);
+
+            function applyChecked(){
+                var e;
+                e=q(id,'enabled'); if(e) e.checked=get(s,'IsEnabled',false);
+                e=q(id,'db');      if(e) e.checked=get(s,'BackupDatabase',true);
+                e=q(id,'meta');    if(e) e.checked=get(s,'BackupMetadata',false);
+                e=q(id,'subs');    if(e) e.checked=get(s,'BackupSubtitles',false);
+                e=q(id,'tp');      if(e) e.checked=get(s,'BackupTrickplay',false);
+            }
+            applyChecked();
+            setTimeout(applyChecked, 150);
+
+            updateVis(card);
+            updateBadge(card);
+
+            var arrow = q(id,'arrow');
+            card.addEventListener('toggle', function(){
+                if (arrow) arrow.style.transform = card.hasAttribute('open') ? 'rotate(90deg)' : 'rotate(0deg)';
+            });
+            if (arrow) arrow.style.transform = 'rotate(90deg)';
+
+            var rebadge = function(){ updateBadge(card); };
+            var inputs = card.querySelectorAll('input, select');
+            for(var i=0;i<inputs.length;i++){
+                inputs[i].addEventListener('change', rebadge);
+                inputs[i].addEventListener('input',  rebadge);
+            }
+            q(id,'type').addEventListener('change', function(){ updateVis(card); updateBadge(card); });
+            q(id,'remove').addEventListener('click', function(){ card.parentNode.removeChild(card); });
+        }
+
+        function addCard(s){
+            var id   = ++_n;
+            var list = document.getElementById('scheduleList');
+            var card = document.createElement('details');
+            card.id  = 'sbcard-' + id;
+            card.setAttribute('open', '');
+            card.style.border       = '1px solid rgba(255,255,255,0.15)';
+            card.style.borderRadius = '4px';
+            card.style.marginBottom = '12px';
+            card.style.padding      = '2px 16px 0';
+            card.style.background   = 'transparent';
+            list.appendChild(card);
+            card.innerHTML = buildCardInner(s, id);
+            wireCard(card, s);
+            return card;
+        }
+
+        function defaultSchedule(){
+            return {Label:T.defaultLabel,IsEnabled:false,BackupDatabase:true,BackupMetadata:false,
+                BackupSubtitles:false,BackupTrickplay:false,ScheduleType:1,
+                IntervalHours:24,IntervalWeeks:1,WeekDay:0,DayOfMonth:1,WeekOfMonth:1,
+                TriggerHour:2,TriggerMinute:0,
+                LastRunUtc:'0001-01-01T00:00:00Z'};
+        }
+
+        document.getElementById('tab-settings').addEventListener('click',  function(){ switchTab('settings');  });
+        document.getElementById('tab-retention').addEventListener('click', function(){ switchTab('retention'); });
+        document.getElementById('tab-backups').addEventListener('click',   function(){ switchTab('backups');   });
+
+        document.getElementById('btnAdd').addEventListener('click', function(){
+            var card = addCard(defaultSchedule());
+            card.scrollIntoView({behavior:'smooth', block:'nearest'});
+        });
+
+        document.getElementById('btnAddRetention').addEventListener('click', function(){
+            var list = document.getElementById('retentionList');
+            list.appendChild(buildRetentionRow(defaultRetentionRule()));
+        });
+
+        document.getElementById('btnSave').addEventListener('click', function(){
+            ApiClient.getPluginConfiguration(PLUGIN_ID).then(function(config){
+                config.IsInitialized = true;
+                config.Schedules = Array.prototype.map.call(
+                    document.querySelectorAll('details[id^="sbcard-"]'), readCard);
+                return ApiClient.updatePluginConfiguration(PLUGIN_ID, config);
+            }).then(function(){
+                Dashboard.alert(T.saved);
+            }).catch(function(e){
+                Dashboard.alert(T.errorSave + e);
+            });
+        });
+
+        document.getElementById('btnSaveRetention').addEventListener('click', function(){
+            ApiClient.getPluginConfiguration(PLUGIN_ID).then(function(config){
+                config.RetentionRules = Array.prototype.map.call(
+                    document.querySelectorAll('#retentionList > div'), readRetentionRow);
+                return ApiClient.updatePluginConfiguration(PLUGIN_ID, config);
+            }).then(function(){
+                Dashboard.alert(T.saved);
+            }).catch(function(e){
+                Dashboard.alert(T.errorSave + e);
+            });
+        });
+
+        document.querySelector('.page').addEventListener('pageshow', function(){
+            ApiClient.getCurrentUser().then(function(user){
+                var userId  = (user.Id || '').replace(/-/g, '').toLowerCase();
+                var culture = localStorage.getItem(userId + '-language') || navigator.language || 'en';
+                T = TRANSLATIONS[culture.toLowerCase().startsWith('de') ? 'de' : 'en'];
+                applyStaticTranslations();
+                return ApiClient.getPluginConfiguration(PLUGIN_ID);
+            }).then(function(config){
+                var list = document.getElementById('scheduleList');
+                list.innerHTML = '';
+                _n = 0;
+                var schedules = config.Schedules || config.schedules || [];
+                var initialized = config.IsInitialized || config.isInitialized || false;
+                if (!initialized && schedules.length === 0) {
+                    schedules = [{ Label:'Daily', IsEnabled:true, BackupDatabase:true,
+                        BackupMetadata:false, BackupSubtitles:false, BackupTrickplay:false,
+                        ScheduleType:1, TriggerHour:8, TriggerMinute:0 }];
+                }
+                schedules.forEach(function(s){ addCard(s); });
+                _retentionRules = config.RetentionRules || config.retentionRules || [];
+                // Apply initial tab styles
+                document.getElementById('tab-settings').style.cssText  = ACTIVE_STYLE;
+                document.getElementById('tab-retention').style.cssText = INACTIVE_STYLE;
+                document.getElementById('tab-backups').style.cssText   = INACTIVE_STYLE;
+            }).catch(function(e){ console.error('[AutoBackup]', e); });
+        });
+
+    }());
+    </script>
+</div>
+</body>
+</html>

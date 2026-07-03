@@ -1,0 +1,171 @@
+name: Publish Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-net9:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+
+      - name: Build and package (net9.0 / Jellyfin 10.x)
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          dotnet publish AutoBackup.csproj -f net9.0 -c Release \
+            -p:Version=${VER} -p:AssemblyVersion=${VER} -p:FileVersion=${VER} \
+            -o publish/net9
+          zip -j "autobackup-net9.zip" publish/net9/Jellyfin.Plugin.AutoBackup.dll
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-net9
+          path: autobackup-net9.zip
+
+  build-net10:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+
+      - name: Build and package (net10.0 / Jellyfin 12.x)
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          dotnet publish AutoBackup.csproj -f net10.0 -c Release \
+            -p:Version=${VER} -p:AssemblyVersion=${VER} -p:FileVersion=${VER} \
+            -o publish/net10
+          zip -j "autobackup-net10.zip" publish/net10/Jellyfin.Plugin.AutoBackup.dll
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-net10
+          path: autobackup-net10.zip
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [build-net9, build-net10]
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changelog from commit message
+        run: |
+          echo "CHANGELOG<<EOF" >> $GITHUB_ENV
+          git log -1 --format="%B" "${{ github.sha }}" | python3 -c "
+          import sys
+          for line in sys.stdin.read().strip().splitlines():
+              print(('- ' + line) if line.strip() else '')
+          " >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Rename artifacts
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          mv artifacts/autobackup-net9.zip  "artifacts/Jellyfin-AutoBackup-${VER}-10.11.x.zip"
+          mv artifacts/autobackup-net10.zip "artifacts/Jellyfin-AutoBackup-${VER}-12.0.x.zip"
+
+      - name: Update manifest.json
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          export VER
+          export BASE_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}"
+          export TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          export NET9_MD5=$(md5sum "artifacts/Jellyfin-AutoBackup-${VER}-10.11.x.zip" | cut -d' ' -f1)
+          export NET10_MD5=$(md5sum "artifacts/Jellyfin-AutoBackup-${VER}-12.0.x.zip" | cut -d' ' -f1)
+
+          python3 - <<'PYEOF'
+          import json, os
+
+          ver       = os.environ['VER']
+          base_url  = os.environ['BASE_URL']
+          timestamp = os.environ['TIMESTAMP']
+          net9_md5  = os.environ['NET9_MD5']
+          net10_md5 = os.environ['NET10_MD5']
+          changelog = os.environ.get('CHANGELOG', '').strip()
+          guid      = '1175543c-6d20-4cfa-93a6-1476836df34c'
+
+          with open('manifest.json') as f:
+              manifest = json.load(f)
+
+          plugin = next((p for p in manifest if p['guid'] == guid), None)
+          if not plugin:
+              plugin = {
+                  'guid': guid,
+                  'name': 'Auto Backup',
+                  'description': 'Automated scheduled ZIP backups of Jellyfin data.',
+                  'overview': 'Automated scheduled ZIP backups of Jellyfin data.',
+                  'owner': 'Filtik',
+                  'category': 'General',
+                  'imageUrl': 'https://raw.githubusercontent.com/${{ github.repository }}/main/images/logo.png',
+                  'versions': []
+              }
+              manifest.append(plugin)
+
+          plugin['versions'] = [v for v in plugin['versions'] if v['version'] != ver]
+          plugin['versions'].insert(0, {
+              'version': ver, 'changelog': changelog, 'targetAbi': '12.0.0.0',
+              'sourceUrl': f'{base_url}/Jellyfin-AutoBackup-{ver}-12.0.x.zip',
+              'checksum': net10_md5, 'timestamp': timestamp
+          })
+          plugin['versions'].insert(0, {
+              'version': ver, 'changelog': changelog, 'targetAbi': '10.11.0.0',
+              'sourceUrl': f'{base_url}/Jellyfin-AutoBackup-{ver}-10.11.x.zip',
+              'checksum': net9_md5, 'timestamp': timestamp
+          })
+
+          with open('manifest.json', 'w') as f:
+              json.dump(manifest, f, indent=4)
+          print('manifest.json updated')
+          PYEOF
+        env:
+          CHANGELOG: ${{ env.CHANGELOG }}
+
+      - name: Commit manifest.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          cp manifest.json /tmp/manifest_updated.json
+          git fetch origin main
+          git checkout -f main
+          git pull --rebase origin main
+          cp /tmp/manifest_updated.json manifest.json
+          git add manifest.json
+          git diff --staged --quiet || git commit -m "chore: update manifest for ${{ github.ref_name }}"
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create release
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          gh release delete "${{ github.ref_name }}" --yes 2>/dev/null || true
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --notes "${{ env.CHANGELOG }}" \
+            "artifacts/Jellyfin-AutoBackup-${VER}-10.11.x.zip" \
+            "artifacts/Jellyfin-AutoBackup-${VER}-12.0.x.zip"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHANGELOG: ${{ env.CHANGELOG }}
