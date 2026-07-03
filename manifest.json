@@ -6,7 +6,7 @@
         "overview": "Automated scheduled ZIP backups of Jellyfin data.",
         "owner": "Filtik",
         "category": "General",
-        "imageUrl": "",
+        "imageUrl": "https://raw.githubusercontent.com/Filtik/Jellyfin-AutoBackup/main/images/logo.png",
         "versions": [
             {
                 "version": "0.1.0.0",
