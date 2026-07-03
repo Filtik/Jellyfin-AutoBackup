@@ -7,6 +7,23 @@
         "owner": "Filtik",
         "category": "General",
         "imageUrl": "",
-        "versions": []
+        "versions": [
+            {
+                "version": "0.1.0.0",
+                "changelog": "- Release\n\n- Init",
+                "targetAbi": "10.11.0.0",
+                "sourceUrl": "https://github.com/Filtik/Jellyfin-AutoBackup/releases/download/v0.1.0.0/Jellyfin-AutoBackup-0.1.0.0-10.11.x.zip",
+                "checksum": "550f9e801b4dd56df2722789ab57b77a",
+                "timestamp": "2026-07-03T09:24:34Z"
+            },
+            {
+                "version": "0.1.0.0",
+                "changelog": "- Release\n\n- Init",
+                "targetAbi": "12.0.0.0",
+                "sourceUrl": "https://github.com/Filtik/Jellyfin-AutoBackup/releases/download/v0.1.0.0/Jellyfin-AutoBackup-0.1.0.0-12.0.x.zip",
+                "checksum": "7219430611d466fe4b2bd52bd810f98f",
+                "timestamp": "2026-07-03T09:24:34Z"
+            }
+        ]
     }
 ]
